@@ -16,6 +16,30 @@ const ASSETS_TO_CACHE = [
   '/audio/7.mp3',
   '/audio/8.mp3'
 ];
+// 每个点位对应的实景图片路径，放到images目录
+const spotImages = {
+    0: "images/spot0.jpg",
+    1: "images/spot1.jpg",
+    2: "images/spot2.jpg",
+    3: "images/spot3.jpg",
+    4: "images/spot4.jpg",
+    5: "images/spot5.jpg",
+    6: "images/spot6.jpg",
+    7: "images/spot7.jpg",
+    8: "images/spot8.jpg"
+};
+// 打开弹窗
+function openLightbox(id){
+    const lb = document.getElementById('lightbox');
+    const lbImg = document.getElementById('lightbox-img');
+    lbImg.src = spotImages[id];
+    lb.classList.add('show');
+}
+// 关闭弹窗
+function closeLightbox(){
+    const lb = document.getElementById('lightbox');
+    lb.classList.remove('show');
+}
 
 // 1. 安装阶段：强行把地图和所有音频存入手机本地
 self.addEventListener('install', event => {
