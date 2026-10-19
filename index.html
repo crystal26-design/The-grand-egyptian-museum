@@ -1,480 +1,1030 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>阿布辛贝神庙·智能语音导览</title>
-    <style>
-        :root {
-            --gold: #d4af37;
-            --dark: #1a1510;
-            --sand: #f4eae1;
-        }
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--dark);
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-        header {
-            background-color: rgba(0, 0, 0, 0.85);
-            text-align: center;
-            padding: 12px 0;
-            border-bottom: 2px solid var(--gold);
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: var(--gold);
-            letter-spacing: 2px;
-        }
-        #map-container {
-            flex: 1;
-            position: relative;
-            background: #2a221b;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        /* 🎯 地图图片元素 */
-        #hand-drawn-map {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-        .spot-marker {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background-color: rgba(212, 175, 55, 0.9);
-            border: 2px solid #fff;
-            color: var(--dark);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            font-size: 11px;
-            cursor: pointer;
-            box-shadow: 0 0 15px var(--gold);
-            transform: translate(-50%, -50%);
-            transition: all 0.3s;
-            z-index: 10;
-        }
-        .spot-marker.active {
-            background-color: #ff4500;
-            box-shadow: 0 0 25px #ff4500;
-            transform: translate(-50%, -50%) scale(1.2);
-        }
-        #panel-control {
-            background-color: rgba(26, 21, 16, 0.95);
-            border-top: 2px solid var(--gold);
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-height: 45vh;
-            overflow-y: auto;
-        }
-        .audio-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 10px 15px;
-            border-radius: 8px;
-            border-left: 4px solid var(--gold);
-        }
-        .audio-info {
-            font-size: 0.9rem;
-            color: var(--sand);
-        }
-        .play-btn {
-            background-color: var(--gold);
-            border: none;
-            color: var(--dark);
-            padding: 6px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .play-btn:disabled {
-            background-color: #555;
-            color: #888;
-            cursor: not-allowed;
-        }
-        .chat-section {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .chat-box {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(214, 175, 55, 0.3);
-            border-radius: 8px;
-            padding: 12px;
-            min-height: 70px;
-            max-height: 140px;
-            overflow-y: auto;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            color: #ddd;
-        }
-        .chat-input-wrap {
-            display: flex;
-            gap: 8px;
-        }
-        .chat-input-wrap input {
-            flex: 1;
-            background: #2b231a;
-            border: 1px solid var(--gold);
-            border-radius: 20px;
-            padding: 8px 15px;
-            color: #fff;
-            outline: none;
-            font-size: 0.9rem;
-        }
-        .chat-input-wrap button {
-            background: var(--gold);
-            border: none;
-            color: var(--dark);
-            border-radius: 20px;
-            padding: 8px 20px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>大埃及博物馆·智能语音导览</title>
+<style>
+    :root {
+        --gold: #d4af37;
+        --dark: #14100b;
+        --dark2: #1e1810;
+        --sand: #f4eae1;
+        --line: rgba(212, 175, 55, 0.28);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-        /* ============ 🖼️ 点位照片灯箱 ============ */
-        #photo-lightbox {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.88);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.25s ease, visibility 0.25s ease;
-            padding: 16px;
-            box-sizing: border-box;
-        }
-        #photo-lightbox.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        .lightbox-inner {
-            position: relative;
-            max-width: 92vw;
-            max-height: 82vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transform: scale(0.94);
-            transition: transform 0.25s ease;
-        }
-        #photo-lightbox.show .lightbox-inner {
-            transform: scale(1);
-        }
-        #lightbox-img {
-            max-width: 92vw;
-            max-height: 72vh;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            border: 2px solid var(--gold);
-            border-radius: 10px;
-            box-shadow: 0 0 40px rgba(212, 175, 55, 0.45);
-            background: #000;
-        }
-        #lightbox-caption {
-            margin-top: 10px;
-            color: var(--gold);
-            font-size: 0.95rem;
-            letter-spacing: 1px;
-            text-align: center;
-            max-width: 92vw;
-        }
-        #lightbox-close {
-            position: absolute;
-            top: -42px;
-            right: -6px;
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            border: 1px solid var(--gold);
-            background: rgba(0, 0, 0, 0.7);
-            color: var(--gold);
-            font-size: 20px;
-            line-height: 1;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        #lightbox-close:active {
-            transform: scale(0.92);
-        }
-        /* 小提示角标 */
-        .photo-hint {
-            margin-top: 6px;
-            font-size: 0.75rem;
-            color: rgba(244, 234, 225, 0.6);
-        }
-    </style>
+    html, body {
+        margin: 0; padding: 0; height: 100%; overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: var(--dark); color: #fff;
+    }
+    body { display: flex; flex-direction: column; }
+
+    /* ================= 顶部标题 ================= */
+    header {
+        flex: 0 0 auto;
+        background: rgba(0, 0, 0, 0.9);
+        text-align: center;
+        padding: 10px 0 8px;
+        border-bottom: 2px solid var(--gold);
+    }
+    header .title {
+        font-size: 1rem; font-weight: bold; color: var(--gold);
+        letter-spacing: 2px;
+    }
+    header .sub {
+        font-size: 0.68rem; color: rgba(244, 234, 225, 0.55);
+        letter-spacing: 1px; margin-top: 3px;
+    }
+
+    /* ================= Tab 切换 ================= */
+    #tab-bar {
+        flex: 0 0 auto;
+        display: flex;
+        background: var(--dark2);
+        border-bottom: 1px solid var(--line);
+    }
+    .tab-btn {
+        flex: 1;
+        padding: 12px 0;
+        text-align: center;
+        font-size: 0.9rem;
+        color: rgba(244, 234, 225, 0.6);
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .tab-btn.active {
+        color: var(--gold);
+        border-bottom-color: var(--gold);
+        font-weight: bold;
+        background: rgba(212, 175, 55, 0.06);
+    }
+
+    /* ================= 内容区 ================= */
+    #main {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 12px 12px 90px;
+    }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ---------- 区域卡片 ---------- */
+    .zone-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(212,175,55,0.07), rgba(212,175,55,0.02));
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+    .zone-head {
+        display: flex; align-items: center; gap: 10px;
+        padding: 13px 14px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .zone-no {
+        flex: 0 0 auto;
+        width: 26px; height: 26px; border-radius: 50%;
+        background: var(--gold); color: var(--dark);
+        display: flex; justify-content: center; align-items: center;
+        font-size: 0.78rem; font-weight: bold;
+    }
+    .zone-name {
+        flex: 1;
+        font-size: 0.95rem; font-weight: bold; color: var(--sand);
+        line-height: 1.3;
+    }
+    .zone-count {
+        flex: 0 0 auto;
+        font-size: 0.7rem; color: var(--gold);
+        border: 1px solid var(--line);
+        border-radius: 10px; padding: 2px 7px;
+        margin-right: 4px;
+    }
+    .zone-arrow {
+        flex: 0 0 auto;
+        color: var(--gold); font-size: 0.75rem;
+        transition: transform 0.25s;
+    }
+    .zone-card.open .zone-arrow { transform: rotate(90deg); }
+
+    /* 区域头部右侧的「区域讲解」小按钮 */
+    .zone-play {
+        flex: 0 0 auto;
+        background: transparent;
+        border: 1px solid var(--gold);
+        color: var(--gold);
+        border-radius: 14px;
+        font-size: 0.7rem;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-family: inherit;
+        white-space: nowrap;
+    }
+    .zone-play:active { background: rgba(212,175,55,0.18); }
+
+    /* 展品列表 */
+    .zone-items {
+        display: none;
+        border-top: 1px solid var(--line);
+        background: rgba(0,0,0,0.25);
+    }
+    .zone-card.open .zone-items { display: block; }
+
+    .item-row {
+        display: flex; align-items: center; gap: 10px;
+        padding: 11px 14px;
+        border-bottom: 1px solid rgba(212,175,55,0.1);
+        cursor: pointer;
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-row:active { background: rgba(212,175,55,0.1); }
+    .item-no {
+        flex: 0 0 auto;
+        width: 30px;
+        font-size: 0.72rem; color: var(--gold); font-weight: bold;
+        text-align: center;
+    }
+    .item-thumb {
+        flex: 0 0 auto;
+        width: 42px; height: 42px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: #2a2218 center/cover no-repeat;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 1rem; color: rgba(212,175,55,0.5);
+        overflow: hidden;
+    }
+    .item-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .item-text { flex: 1; min-width: 0; }
+    .item-name {
+        font-size: 0.86rem; color: var(--sand);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .item-sub {
+        font-size: 0.7rem; color: rgba(244,234,225,0.45);
+        margin-top: 2px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .item-audio {
+        flex: 0 0 auto;
+        width: 26px; height: 26px; border-radius: 50%;
+        border: 1px solid var(--gold);
+        display: flex; justify-content: center; align-items: center;
+        font-size: 0.7rem; color: var(--gold);
+    }
+
+    /* ---------- 地图视图 ---------- */
+    #map-view { text-align: center; }
+    .map-tip {
+        font-size: 0.75rem; color: rgba(244,234,225,0.5);
+        margin: 2px 0 10px;
+    }
+    #map-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        background: #2a221b;
+    }
+    /* 🎯 地图图片占位：换成真实地图 */
+    #hand-drawn-map {
+        width: 100%; height: auto; display: block;
+    }
+    .map-placeholder {
+        width: 100%; aspect-ratio: 4 / 3;
+        background:
+            repeating-linear-gradient(45deg, rgba(212,175,55,0.06) 0 12px, transparent 12px 24px),
+            #2a221b;
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
+        gap: 8px;
+        color: rgba(212,175,55,0.65);
+        font-size: 0.85rem;
+    }
+    .map-placeholder .big { font-size: 2rem; }
+
+    .spot-marker {
+        position: absolute;
+        width: 24px; height: 24px;
+        background: rgba(212,175,55,0.92);
+        border: 2px solid #fff;
+        color: var(--dark);
+        border-radius: 50%;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 10px; font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 0 12px var(--gold);
+        transform: translate(-50%, -50%);
+        transition: all 0.3s;
+        z-index: 10;
+    }
+    .spot-marker.zone-marker {
+        width: 30px; height: 30px;
+        background: rgba(255, 69, 0, 0.92);
+        box-shadow: 0 0 16px #ff4500;
+        font-size: 11px;
+    }
+    .spot-marker.active {
+        background: #ff4500;
+        box-shadow: 0 0 24px #ff4500;
+        transform: translate(-50%, -50%) scale(1.18);
+    }
+
+    /* ================= 讲解弹层（区域 / 展品共用） ================= */
+    #detail-modal {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.9);
+        z-index: 9000;
+        display: flex; justify-content: center; align-items: center;
+        opacity: 0; visibility: hidden;
+        transition: opacity 0.25s, visibility 0.25s;
+        padding: 16px;
+    }
+    #detail-modal.show { opacity: 1; visibility: visible; }
+
+    .detail-card {
+        width: 100%;
+        max-width: 460px;
+        max-height: 88vh;
+        background: var(--dark2);
+        border: 1px solid var(--gold);
+        border-radius: 14px;
+        display: flex; flex-direction: column;
+        overflow: hidden;
+        transform: scale(0.94);
+        transition: transform 0.25s;
+        box-shadow: 0 0 50px rgba(212,175,55,0.35);
+    }
+    #detail-modal.show .detail-card { transform: scale(1); }
+
+    .detail-head {
+        flex: 0 0 auto;
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(0,0,0,0.35);
+    }
+    .detail-badge {
+        flex: 0 0 auto;
+        font-size: 0.66rem;
+        color: var(--gold);
+        border: 1px solid var(--gold);
+        border-radius: 10px;
+        padding: 2px 8px;
+    }
+    .detail-title {
+        flex: 1;
+        font-size: 0.95rem; font-weight: bold; color: var(--sand);
+        line-height: 1.3;
+    }
+    .detail-close {
+        flex: 0 0 auto;
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        border: 1px solid var(--gold);
+        background: transparent;
+        color: var(--gold);
+        font-size: 16px; line-height: 1;
+        cursor: pointer;
+        display: flex; justify-content: center; align-items: center;
+    }
+
+    .detail-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* 讲解图片占位 */
+    .detail-photo {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        background: #0e0b07;
+        display: flex; justify-content: center; align-items: center;
+        overflow: hidden;
+        border-bottom: 1px solid var(--line);
+        position: relative;
+    }
+    .detail-photo img {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .photo-placeholder {
+        position: absolute; inset: 0;
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center; gap: 6px;
+        color: rgba(212,175,55,0.55);
+        font-size: 0.78rem;
+        background:
+            repeating-linear-gradient(45deg, rgba(212,175,55,0.05) 0 14px, transparent 14px 28px);
+    }
+    .photo-placeholder .big { font-size: 2.2rem; }
+
+    .detail-desc {
+        padding: 13px 15px;
+        font-size: 0.84rem;
+        line-height: 1.65;
+        color: rgba(244,234,225,0.8);
+        border-bottom: 1px solid var(--line);
+    }
+
+    /* 语音讲解条 */
+    .audio-bar {
+        padding: 12px 14px;
+        display: flex; align-items: center; gap: 12px;
+        background: rgba(212,175,55,0.06);
+    }
+    .play-btn {
+        flex: 0 0 auto;
+        width: 42px; height: 42px;
+        border-radius: 50%;
+        background: var(--gold);
+        border: none;
+        color: var(--dark);
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex; justify-content: center; align-items: center;
+    }
+    .play-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+
+    .audio-meta { flex: 1; min-width: 0; }
+    .audio-label {
+        font-size: 0.75rem; color: var(--gold);
+        display: flex; justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    .audio-track {
+        height: 4px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 2px;
+        overflow: hidden;
+        cursor: pointer;
+    }
+    .audio-progress {
+        height: 100%; width: 0%;
+        background: var(--gold);
+        border-radius: 2px;
+        transition: width 0.15s linear;
+    }
+
+    /* ================= AI 悬浮球 ================= */
+    #ai-fab {
+        position: fixed;
+        right: 16px; bottom: 20px;
+        width: 54px; height: 54px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #f0d67a, var(--gold) 65%);
+        border: 2px solid #fff;
+        box-shadow: 0 4px 20px rgba(212,175,55,0.55);
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
+        cursor: pointer;
+        z-index: 9500;
+        color: var(--dark);
+        transition: transform 0.2s;
+    }
+    #ai-fab:active { transform: scale(0.92); }
+    #ai-fab .ico { font-size: 1.35rem; line-height: 1; }
+    #ai-fab .txt { font-size: 0.55rem; font-weight: bold; letter-spacing: 1px; margin-top: 1px; }
+
+    /* AI 对话面板 */
+    #ai-panel {
+        position: fixed;
+        right: 12px; bottom: 12px;
+        width: calc(100% - 24px);
+        max-width: 400px;
+        height: min(70vh, 520px);
+        background: var(--dark2);
+        border: 1px solid var(--gold);
+        border-radius: 14px;
+        box-shadow: 0 10px 50px rgba(0,0,0,0.75);
+        z-index: 9600;
+        display: flex; flex-direction: column;
+        overflow: hidden;
+        transform: translateY(16px) scale(0.96);
+        opacity: 0; visibility: hidden;
+        transition: all 0.25s ease;
+    }
+    #ai-panel.show { transform: none; opacity: 1; visibility: visible; }
+
+    .ai-head {
+        flex: 0 0 auto;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 11px 14px;
+        background: rgba(0,0,0,0.4);
+        border-bottom: 1px solid var(--line);
+        font-size: 0.9rem; font-weight: bold; color: var(--gold);
+    }
+    .ai-head .close {
+        width: 26px; height: 26px; border-radius: 50%;
+        border: 1px solid var(--gold); background: transparent;
+        color: var(--gold); font-size: 15px; line-height: 1;
+        cursor: pointer;
+        display: flex; justify-content: center; align-items: center;
+    }
+    .ai-context {
+        flex: 0 0 auto;
+        font-size: 0.68rem;
+        color: rgba(244,234,225,0.5);
+        padding: 6px 14px;
+        border-bottom: 1px solid rgba(212,175,55,0.12);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ai-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding: 12px 14px;
+        font-size: 0.85rem;
+        line-height: 1.6;
+        color: #ddd;
+        -webkit-overflow-scrolling: touch;
+    }
+    .ai-body .msg { margin-bottom: 10px; }
+    .ai-body .msg.user { text-align: right; }
+    .ai-body .msg.user span {
+        display: inline-block;
+        background: rgba(212,175,55,0.18);
+        border: 1px solid var(--line);
+        border-radius: 10px 10px 2px 10px;
+        padding: 7px 11px;
+        max-width: 85%;
+        color: var(--sand);
+        text-align: left;
+    }
+    .ai-body .msg.ai span {
+        display: inline-block;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(212,175,55,0.18);
+        border-radius: 10px 10px 10px 2px;
+        padding: 7px 11px;
+        max-width: 92%;
+    }
+    .ai-input-wrap {
+        flex: 0 0 auto;
+        display: flex; gap: 8px;
+        padding: 10px 12px;
+        border-top: 1px solid var(--line);
+        background: rgba(0,0,0,0.3);
+    }
+    .ai-input-wrap input {
+        flex: 1;
+        background: #2b231a;
+        border: 1px solid var(--gold);
+        border-radius: 20px;
+        padding: 8px 14px;
+        color: #fff; outline: none;
+        font-size: 0.85rem;
+        font-family: inherit;
+    }
+    .ai-input-wrap button {
+        flex: 0 0 auto;
+        background: var(--gold); border: none;
+        color: var(--dark);
+        border-radius: 20px;
+        padding: 8px 18px;
+        font-weight: bold; font-size: 0.85rem;
+        cursor: pointer;
+        font-family: inherit;
+    }
+    .ai-input-wrap button:disabled { background: #555; color: #888; }
+
+    /* 修改过的全局音频元素（隐藏） */
+    #global-player { display: none; }
+</style>
 </head>
 <body>
-    <header>🏛️ 阿布辛贝神庙·智能语音微导览</header>
 
-    <div id="map-container">
-        <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%;">
-            <!-- 图片 -->
-            <img id="hand-drawn-map" src="images/GEM.png" alt="神庙手绘地图">
-            <!-- 9个标注点 -->
-            <div class="spot-marker" style="left: 7%; top: 15%;" onclick="selectSpot(0)">0</div>
-            <div class="spot-marker" style="left: 15%; top: 43%;" onclick="selectSpot(1)">1</div>
-            <div class="spot-marker" style="left: 27%; top: 8%;" onclick="selectSpot(2)">2</div>
-            <div class="spot-marker" style="left: 16%; top: 76%;" onclick="selectSpot(3)">3</div>
-            <div class="spot-marker" style="left: 24%; top: 77%;" onclick="selectSpot(4)">4</div>
-            <div class="spot-marker" style="left: 32%; top: 77%;" onclick="selectSpot(5)">5</div>
-            <div class="spot-marker" style="left: 47%; top: 77%;" onclick="selectSpot(6)">6</div>
-            <div class="spot-marker" style="left: 66%; top: 71%;" onclick="selectSpot(7)">7</div>
-            <div class="spot-marker" style="left: 58%; top: 12%;" onclick="selectSpot(8)">8</div>
-        </div>
-    </div>
+<header>
+    <div class="title">🏛️ 大埃及博物馆·智能语音导览</div>
+    <div class="sub">GRAND EGYPTIAN MUSEUM · AUDIO GUIDE</div>
+</header>
 
-    <div id="panel-control">
-        <div class="audio-bar">
-            <div class="audio-info">
-                <span id="spot-title">🔊 请点击地图点位开启讲解</span>
-            </div>
-            <button class="play-btn" id="play-trigger" onclick="toggleAudio()" disabled>播放</button>
-            <audio id="global-player" style="display: none;"></audio>
-        </div>
-        <div class="chat-section">
-            <div class="chat-box" id="ai-bubble">
-                🔮 <b>法老密示：</b><br>游客，点击地图上的金色徽章即可聆听史诗。若有历史疑问，尽管在此向我发问……
-            </div>
-            <div class="chat-input-wrap">
-                <input type="text" id="user-question" placeholder="向法老拉美西斯二世提问..." onkeypress="handleKeyPress(event)">
-                <button onclick="askPharaoh()">提问</button>
+<!-- ================= 双 Tab ================= -->
+<div id="tab-bar">
+    <button class="tab-btn active" id="tab-list" onclick="switchTab('list')">展品检索</button>
+    <button class="tab-btn" id="tab-map" onclick="switchTab('map')">展馆地图</button>
+</div>
+
+<div id="main">
+
+    <!-- ============ 视图一：展品检索（默认） ============ -->
+    <div class="view active" id="view-list"></div>
+
+    <!-- ============ 视图二：展馆地图 ============ -->
+    <div class="view" id="view-map">
+        <div id="map-view">
+            <div class="map-tip">点击地图上的点位，查看该区域讲解</div>
+            <div id="map-wrapper">
+                <!-- 地图占位：把下面 div 换成 <img id="hand-drawn-map" src="images/museum-map.jpg"> 即可 -->
+                <div class="map-placeholder" id="hand-drawn-map">
+                    <div class="big">🗺️</div>
+                    <div>展馆平面图占位</div>
+                    <div style="font-size:0.7rem;opacity:0.7">images/museum-map.jpg</div>
+                </div>
+                <!-- 区域点位由 JS 动态生成 -->
             </div>
         </div>
     </div>
 
-    <!-- ============ 🖼️ 点位照片灯箱（新增） ============ -->
-    <div id="photo-lightbox" onclick="closePhoto(event)">
-        <div class="lightbox-inner">
-            <button id="lightbox-close" onclick="closePhoto(event, true)">&times;</button>
-            <img id="lightbox-img" src="" alt="点位照片">
-            <div id="lightbox-caption"></div>
-            <div class="photo-hint">点击空白处或按 Esc 关闭</div>
+</div>
+
+<!-- ================= 讲解弹层（区域 / 展品共用） ================= -->
+<div id="detail-modal" onclick="if(event.target===this) closeDetail()">
+    <div class="detail-card">
+        <div class="detail-head">
+            <span class="detail-badge" id="detail-badge">区域</span>
+            <div class="detail-title" id="detail-title">标题</div>
+            <button class="detail-close" onclick="closeDetail()">&times;</button>
+        </div>
+        <div class="detail-body">
+            <!-- 图片占位 -->
+            <div class="detail-photo">
+                <img id="detail-img" src="" alt="" style="display:none">
+                <div class="photo-placeholder" id="detail-photo-ph">
+                    <div class="big">🖼️</div>
+                    <div id="detail-photo-ph-text">图片占位</div>
+                </div>
+            </div>
+            <div class="detail-desc" id="detail-desc">描述占位</div>
+            <div class="audio-bar">
+                <button class="play-btn" id="play-btn" onclick="toggleAudio()">▶</button>
+                <div class="audio-meta">
+                    <div class="audio-label">
+                        <span>语音讲解</span>
+                        <span id="audio-time">00:00 / 00:00</span>
+                    </div>
+                    <div class="audio-track" onclick="seekAudio(event)">
+                        <div class="audio-progress" id="audio-progress"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+</div>
 
-    <script>
-        const spotNames = {
-            0: "0号点：序曲",
-            1: "1号点：尼罗河登陆视角：神迹初现",
-            2: "2号点：四尊拉美西斯巨像：我的化身",
-            3: "3号点：门楣与战斗浮雕：帝国的石刻宣言",
-            4: "4号点：奥西里斯柱厅：踏入神域",
-            5: "5号点：第二柱厅与祭祀空间：凡人的边界",
-            6: "6号点：圣所：宇宙的终点",
-            7: "7号点：日照奇迹：跨越三千年的计算",
-            8: "8号点：奈菲尔塔莉小神庙：给王后的礼物"
-        };
+<!-- ================= AI 悬浮球 ================= -->
+<div id="ai-fab" onclick="toggleAiPanel()">
+    <div class="ico">🔮</div>
+    <div class="txt">AI</div>
+</div>
 
-        /* ===== 🖼️ 点位照片配置：把下面路径换成你自己的照片即可 ===== */
-        const spotPhotos = {
-            0: "images/spot0.jpg",
-            1: "images/spot1.jpg",
-            2: "images/spot2.jpg",
-            3: "images/spot3.jpg",
-            4: "images/spot4.jpg",
-            5: "images/spot5.jpg",
-            6: "images/spot6.jpg",
-            7: "images/spot7.jpg",
-            8: "images/spot8.jpg"
-        };
+<!-- ================= AI 对话面板 ================= -->
+<div id="ai-panel">
+    <div class="ai-head">
+        <span>🔮 法老密示</span>
+        <button class="close" onclick="toggleAiPanel(false)">&times;</button>
+    </div>
+    <div class="ai-context" id="ai-context">当前浏览：导览首页</div>
+    <div class="ai-body" id="ai-body">
+        <div class="msg ai"><span>游客，点击任意区域或展品即可聆听讲解。若有历史疑问，尽管在此向我发问……</span></div>
+    </div>
+    <div class="ai-input-wrap">
+        <input type="text" id="user-question" placeholder="向拉美西斯二世提问..."
+               onkeypress="handleKeyPress(event)">
+        <button onclick="askPharaoh()" id="ask-btn">提问</button>
+    </div>
+</div>
 
-        let currentSpotId = null;
-        let eventSource = null;
-        let fullAnswer = ""; //全局保存回答文本
-        const player = document.getElementById("global-player");
-        const playBtn = document.getElementById("play-trigger");
-        const lightbox = document.getElementById("photo-lightbox");
-        const lightboxImg = document.getElementById("lightbox-img");
-        const lightboxCaption = document.getElementById("lightbox-caption");
+<!-- 全局音频播放器 -->
+<audio id="global-player" preload="metadata"></audio>
 
-        function selectSpot(id) {
-            currentSpotId = id;
+<script>
+/* =========================================================
+   一、数据配置区（改名字 / 换图片 / 换音频，只动这里）
+   ========================================================= */
 
-            document.querySelectorAll(".spot-marker").forEach((el, index) => {
-                if (index === id) el.classList.add("active");
-                else el.classList.remove("active");
-            });
-            document.getElementById("spot-title").innerText = spotNames[id];
-            playBtn.removeAttribute("disabled");
-            playBtn.innerText = "播放";
-            player.src = `audio/${id}.mp3`;
-            player.play().then(() => {
-                playBtn.innerText = "暂停";
-            }).catch(e => console.log("用户需交互后播放"));
-            document.getElementById("ai-bubble").innerHTML = `🔮 <b>法老密示：</b><br>你已抵达【${spotNames[id]}】。听完我的低语，如果还有不解之谜，写在下方问我。`;
+/* 6 个区域 */
+const ZONES = [
+    { id: 'z1', name: '走进大埃及博物馆', en: 'Arrival',        count: 5,
+      img: 'images/zone1.jpg',  audio: 'audio/zone1.mp3',
+      desc: '【区域讲解文案占位】简述大埃及博物馆的建馆背景、地理位置、建筑规模与参观动线。' },
+    { id: 'z2', name: '大厅',               en: 'Grand Hall',    count: 6,
+      img: 'images/zone2.jpg',  audio: 'audio/zone2.mp3',
+      desc: '【区域讲解文案占位】介绍大厅的空间设计、标志性展品与整体参观氛围。' },
+    { id: 'z3', name: '大阶梯',             en: 'Grand Staircase', count: 6,
+      img: 'images/zone3.jpg',  audio: 'audio/zone3.mp3',
+      desc: '【区域讲解文案占位】介绍大阶梯的阶梯式布展逻辑、沿途陈列的雕像与视觉轴线。' },
+    { id: 'z4', name: '图坦卡蒙展厅',       en: 'Tutankhamun',   count: 8,
+      img: 'images/zone4.jpg',  audio: 'audio/zone4.mp3',
+      desc: '【区域讲解文案占位】介绍图坦卡蒙展厅的布展思路、黄金面具等核心展品。' },
+    { id: 'z5', name: '主展厅',             en: 'Main Galleries', count: 8,
+      img: 'images/zone5.jpg',  audio: 'audio/zone5.mp3',
+      desc: '【区域讲解文案占位】介绍主展厅按时代与主题划分的展陈结构。' },
+    { id: 'z6', name: '胡夫船展厅',         en: 'Khufu Boat',    count: 4,
+      img: 'images/zone6.jpg',  audio: 'audio/zone6.mp3',
+      desc: '【区域讲解文案占位】介绍胡夫太阳船的出土过程、结构与保护展示方式。' }
+];
 
-            // 👉 新增：弹出该点位照片
-            openPhoto(id);
-        }
+/* 37 件展品：编号 / 名称 / 副标题 / 所属区域 / 图片 / 音频 / 文案 */
+const ITEMS = [
+    /* —— 走进大埃及博物馆（5 件）—— */
+    { no: 1,  zone: 'z1', name: '【展品名称占位】1', sub: '年代 · 材质占位', img: 'images/item1.jpg',  audio: 'audio/item1.mp3',  desc: '【展品讲解文案占位】' },
+    { no: 2,  zone: 'z1', name: '【展品名称占位】2', sub: '年代 · 材质占位', img: 'images/item2.jpg',  audio: 'audio/item2.mp3',  desc: '【展品讲解文案占位】' },
+    { no: 3,  zone: 'z1', name: '【展品名称占位】3', sub: '年代 · 材质占位', img: 'images/item3.jpg',  audio: 'audio/item3.mp3',  desc: '【展品讲解文案占位】' },
+    { no: 4,  zone: 'z1', name: '【展品名称占位】4', sub: '年代 · 材质占位', img: 'images/item4.jpg',  audio: 'audio/item4.mp3',  desc: '【展品讲解文案占位】' },
+    { no: 5,  zone: 'z1', name: '【展品名称占位】5', sub: '年代 · 材质占位', img: 'images/item5.jpg',  audio: 'audio/item5.mp3',  desc: '【展品讲解文案占位】' },
 
-        /* ===== 🖼️ 灯箱相关函数（新增） ===== */
-        function openPhoto(id) {
-            const src = spotPhotos[id];
-            if (!src) return;
-            lightboxImg.src = src;
-            lightboxImg.alt = spotNames[id] || "点位照片";
-            lightboxCaption.innerText = spotNames[id] || "";
-            lightbox.classList.add("show");
-        }
+    /* —— 大厅（6 件）—— */
+    { no: 6,  zone: 'z2', name: '【展品名称占位】6', sub: '年代 · 材质占位', img: 'images/item6.jpg',  audio: 'audio/item6.mp3',  desc: '【展品讲解文案占位】' },
+    { no: 7,  zone: 'z2', name: '【展品名称占位】7', sub: '年代 · 材质占位', img: 'images/item7.jpg',  audio: 'audio/item7.mp3',  desc: '【展品讲解文案占位】' },
+    { no: 8,  zone: 'z2', name: '【展品名称占位】8', sub: '年代 · 材质占位', img: 'images/item8.jpg',  audio: 'audio/item8.mp3',  desc: '【展品讲解文案占位】' },
+    { no: 9,  zone: 'z2', name: '【展品名称占位】9', sub: '年代 · 材质占位', img: 'images/item9.jpg',  audio: 'audio/item9.mp3',  desc: '【展品讲解文案占位】' },
+    { no: 10, zone: 'z2', name: '【展品名称占位】10', sub: '年代 · 材质占位', img: 'images/item10.jpg', audio: 'audio/item10.mp3', desc: '【展品讲解文案占位】' },
+    { no: 11, zone: 'z2', name: '【展品名称占位】11', sub: '年代 · 材质占位', img: 'images/item11.jpg', audio: 'audio/item11.mp3', desc: '【展品讲解文案占位】' },
 
-        function closePhoto(event, force) {
-            // 点击内部内容不关闭；只有点遮罩或关闭按钮才关闭
-            if (!force && event && event.target !== lightbox) return;
-            lightbox.classList.remove("show");
-            // 关闭动画结束后再清空图片，避免闪烁
-            setTimeout(() => {
-                if (!lightbox.classList.contains("show")) lightboxImg.src = "";
-            }, 300);
-        }
+    /* —— 大阶梯（6 件）—— */
+    { no: 12, zone: 'z3', name: '【展品名称占位】12', sub: '年代 · 材质占位', img: 'images/item12.jpg', audio: 'audio/item12.mp3', desc: '【展品讲解文案占位】' },
+    { no: 13, zone: 'z3', name: '【展品名称占位】13', sub: '年代 · 材质占位', img: 'images/item13.jpg', audio: 'audio/item13.mp3', desc: '【展品讲解文案占位】' },
+    { no: 14, zone: 'z3', name: '【展品名称占位】14', sub: '年代 · 材质占位', img: 'images/item14.jpg', audio: 'audio/item14.mp3', desc: '【展品讲解文案占位】' },
+    { no: 15, zone: 'z3', name: '【展品名称占位】15', sub: '年代 · 材质占位', img: 'images/item15.jpg', audio: 'audio/item15.mp3', desc: '【展品讲解文案占位】' },
+    { no: 16, zone: 'z3', name: '【展品名称占位】16', sub: '年代 · 材质占位', img: 'images/item16.jpg', audio: 'audio/item16.mp3', desc: '【展品讲解文案占位】' },
+    { no: 17, zone: 'z3', name: '【展品名称占位】17', sub: '年代 · 材质占位', img: 'images/item17.jpg', audio: 'audio/item17.mp3', desc: '【展品讲解文案占位】' },
 
-        // 按 Esc 关闭
-        document.addEventListener("keydown", function (e) {
-            if (e.key === "Escape" && lightbox.classList.contains("show")) {
-                closePhoto(null, true);
-            }
-        });
+    /* —— 图坦卡蒙展厅（8 件）—— */
+    { no: 18, zone: 'z4', name: '【展品名称占位】18', sub: '年代 · 材质占位', img: 'images/item18.jpg', audio: 'audio/item18.mp3', desc: '【展品讲解文案占位】' },
+    { no: 19, zone: 'z4', name: '【展品名称占位】19', sub: '年代 · 材质占位', img: 'images/item19.jpg', audio: 'audio/item19.mp3', desc: '【展品讲解文案占位】' },
+    { no: 20, zone: 'z4', name: '【展品名称占位】20', sub: '年代 · 材质占位', img: 'images/item20.jpg', audio: 'audio/item20.mp3', desc: '【展品讲解文案占位】' },
+    { no: 21, zone: 'z4', name: '【展品名称占位】21', sub: '年代 · 材质占位', img: 'images/item21.jpg', audio: 'audio/item21.mp3', desc: '【展品讲解文案占位】' },
+    { no: 22, zone: 'z4', name: '【展品名称占位】22', sub: '年代 · 材质占位', img: 'images/item22.jpg', audio: 'audio/item22.mp3', desc: '【展品讲解文案占位】' },
+    { no: 23, zone: 'z4', name: '【展品名称占位】23', sub: '年代 · 材质占位', img: 'images/item23.jpg', audio: 'audio/item23.mp3', desc: '【展品讲解文案占位】' },
+    { no: 24, zone: 'z4', name: '【展品名称占位】24', sub: '年代 · 材质占位', img: 'images/item24.jpg', audio: 'audio/item24.mp3', desc: '【展品讲解文案占位】' },
+    { no: 25, zone: 'z4', name: '【展品名称占位】25', sub: '年代 · 材质占位', img: 'images/item25.jpg', audio: 'audio/item25.mp3', desc: '【展品讲解文案占位】' },
 
-        // 图片加载失败时给出提示（比如路径写错）
-        lightboxImg.addEventListener("error", function () {
-            if (this.src) {
-                lightboxCaption.innerText = "照片加载失败，请检查路径：" + spotPhotos[currentSpotId];
-            }
-        });
+    /* —— 主展厅（8 件）—— */
+    { no: 26, zone: 'z5', name: '【展品名称占位】26', sub: '年代 · 材质占位', img: 'images/item26.jpg', audio: 'audio/item26.mp3', desc: '【展品讲解文案占位】' },
+    { no: 27, zone: 'z5', name: '【展品名称占位】27', sub: '年代 · 材质占位', img: 'images/item27.jpg', audio: 'audio/item27.mp3', desc: '【展品讲解文案占位】' },
+    { no: 28, zone: 'z5', name: '【展品名称占位】28', sub: '年代 · 材质占位', img: 'images/item28.jpg', audio: 'audio/item28.mp3', desc: '【展品讲解文案占位】' },
+    { no: 29, zone: 'z5', name: '【展品名称占位】29', sub: '年代 · 材质占位', img: 'images/item29.jpg', audio: 'audio/item29.mp3', desc: '【展品讲解文案占位】' },
+    { no: 30, zone: 'z5', name: '【展品名称占位】30', sub: '年代 · 材质占位', img: 'images/item30.jpg', audio: 'audio/item30.mp3', desc: '【展品讲解文案占位】' },
+    { no: 31, zone: 'z5', name: '【展品名称占位】31', sub: '年代 · 材质占位', img: 'images/item31.jpg', audio: 'audio/item31.mp3', desc: '【展品讲解文案占位】' },
+    { no: 32, zone: 'z5', name: '【展品名称占位】32', sub: '年代 · 材质占位', img: 'images/item32.jpg', audio: 'audio/item32.mp3', desc: '【展品讲解文案占位】' },
+    { no: 33, zone: 'z5', name: '【展品名称占位】33', sub: '年代 · 材质占位', img: 'images/item33.jpg', audio: 'audio/item33.mp3', desc: '【展品讲解文案占位】' },
 
-        function toggleAudio() {
-            if (currentSpotId === null) return;
-            if (player.paused) {
-                player.play();
-                playBtn.innerText = "暂停";
-            } else {
-                player.pause();
-                playBtn.innerText = "播放";
-            }
-        }
+    /* —— 胡夫船展厅（4 件）—— */
+    { no: 34, zone: 'z6', name: '【展品名称占位】34', sub: '年代 · 材质占位', img: 'images/item34.jpg', audio: 'audio/item34.mp3', desc: '【展品讲解文案占位】' },
+    { no: 35, zone: 'z6', name: '【展品名称占位】35', sub: '年代 · 材质占位', img: 'images/item35.jpg', audio: 'audio/item35.mp3', desc: '【展品讲解文案占位】' },
+    { no: 36, zone: 'z6', name: '【展品名称占位】36', sub: '年代 · 材质占位', img: 'images/item36.jpg', audio: 'audio/item36.mp3', desc: '【展品讲解文案占位】' },
+    { no: 37, zone: 'z6', name: '【展品名称占位】37', sub: '年代 · 材质占位', img: 'images/item37.jpg', audio: 'audio/item37.mp3', desc: '【展品讲解文案占位】' }
+];
 
-        function handleKeyPress(e) {
-            if (e.key === 'Enter') askPharaoh();
-        }
+/* 地图点位：percent 定位，对应 6 个区域 */
+const MAP_SPOTS = [
+    { zone: 'z1', label: '入', left: '50%', top: '88%' },
+    { zone: 'z2', label: '厅', left: '50%', top: '68%' },
+    { zone: 'z3', label: '阶', left: '50%', top: '50%' },
+    { zone: 'z4', label: '图', left: '30%', top: '32%' },
+    { zone: 'z5', label: '展', left: '70%', top: '32%' },
+    { zone: 'z6', label: '船', left: '50%', top: '14%' }
+];
 
-        function askPharaoh() {
-            const input = document.getElementById("user-question");
-            const bubble = document.getElementById("ai-bubble");
-            const btn = input.nextElementSibling;
-            const question = input.value.trim();
-            if (!question) return;
 
-            // 关闭上一次SSE连接，解决只能第一问
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
-            }
-            fullAnswer = ""; //每次新提问清空回答缓存
+/* =========================================================
+   二、渲染逻辑
+   ========================================================= */
 
-            input.value = "";
-            input.disabled = true;
-            btn.disabled = true;
-            bubble.innerHTML = "⏳ <i>法老正拨开三千年的风沙，在泥板上翻阅史料...</i>";
+const viewList = document.getElementById('view-list');
+const viewMap  = document.getElementById('view-map');
 
-            const contextQuestion = currentSpotId !== null
-                ? `当前游客在：${spotNames[currentSpotId]}。问题是：${question}`
-                : question;
+let currentContext = '导览首页';   // 供 AI 上下文使用
+let currentDetail  = null;         // { type:'zone'|'item', data }
 
-            const url = `/api/chat?question=${encodeURIComponent(contextQuestion)}`;
-            eventSource = new EventSource(url);
+/* ---- 渲染区域列表 ---- */
+function renderList() {
+    viewList.innerHTML = ZONES.map((z, zi) => {
+        const items = ITEMS.filter(it => it.zone === z.id);
+        const rows = items.map(it => `
+            <div class="item-row" onclick="openItem(${it.no})">
+                <div class="item-no">${it.no}</div>
+                <div class="item-thumb" data-thumb="${it.img}">🖼</div>
+                <div class="item-text">
+                    <div class="item-name">${it.name}</div>
+                    <div class="item-sub">${it.sub}</div>
+                </div>
+                <div class="item-audio">🔊</div>
+            </div>
+        `).join('');
 
-            eventSource.addEventListener("conversation.message.delta", function (e) {
-                try {
-                    const obj = JSON.parse(e.data);
-                    if (obj.type === "answer") {
-                        // 当前模型bug content为空，临时读取reasoning_content输出
-                        const textChunk = obj.content || obj.reasoning_content || "";
-                        if (textChunk) {
-                            fullAnswer += textChunk;
-                            bubble.innerHTML = `🔮 <b>法老密示：</b><br>${fullAnswer}`;
-                        }
-                    }
-                } catch (err) {
-                    console.log("delta解析跳过", err);
+        return `
+        <div class="zone-card" id="zc-${z.id}">
+            <div class="zone-head" onclick="toggleZone('${z.id}')">
+                <div class="zone-no">${zi + 1}</div>
+                <div class="zone-name">${z.name}</div>
+                <div class="zone-count">${items.length} 件</div>
+                <button class="zone-play" onclick="event.stopPropagation(); openZone('${z.id}')">▶ 区域讲解</button>
+                <div class="zone-arrow">▶</div>
+            </div>
+            <div class="zone-items">${rows}</div>
+        </div>`;
+    }).join('');
+
+    // 缩略图懒加载（存在就显示，不存在就保留占位）
+    document.querySelectorAll('.item-thumb[data-thumb]').forEach(box => {
+        const src = box.dataset.thumb;
+        if (!src) return;
+        const img = new Image();
+        img.onload = () => { box.innerHTML = `<img src="${src}" alt="">`; };
+        img.src = src;
+    });
+}
+
+/* ---- 渲染地图点位 ---- */
+function renderMap() {
+    const wrap = document.getElementById('map-wrapper');
+    MAP_SPOTS.forEach(s => {
+        const z = ZONES.find(x => x.id === s.zone);
+        const el = document.createElement('div');
+        el.className = 'spot-marker zone-marker';
+        el.style.left = s.left;
+        el.style.top = s.top;
+        el.innerText = s.label;
+        el.title = z ? z.name : '';
+        el.onclick = () => openZone(s.zone);
+        wrap.appendChild(el);
+    });
+}
+
+/* ---- Tab 切换 ---- */
+function switchTab(which) {
+    document.getElementById('tab-list').classList.toggle('active', which === 'list');
+    document.getElementById('tab-map').classList.toggle('active', which === 'map');
+    viewList.classList.toggle('active', which === 'list');
+    viewMap.classList.toggle('active', which === 'map');
+    document.getElementById('main').scrollTop = 0;
+    currentContext = which === 'list' ? '展品检索' : '展馆地图';
+    updateAiContext();
+}
+
+/* ---- 区域展开 / 收起 ---- */
+function toggleZone(id) {
+    const card = document.getElementById('zc-' + id);
+    if (!card) return;
+    const willOpen = !card.classList.contains('open');
+    // 手风琴：一次只开一个
+    document.querySelectorAll('.zone-card').forEach(c => c.classList.remove('open'));
+    if (willOpen) card.classList.add('open');
+}
+
+/* ---- 打开区域讲解 ---- */
+function openZone(id) {
+    const z = ZONES.find(x => x.id === id);
+    if (!z) return;
+    currentDetail = { type: 'zone', data: z };
+    currentContext = `区域：${z.name}`;
+    updateAiContext();
+
+    document.getElementById('detail-badge').innerText = '区域讲解';
+    document.getElementById('detail-title').innerText = z.name;
+    document.getElementById('detail-desc').innerText = z.desc;
+    setDetailPhoto(z.img, z.name);
+    loadAudio(z.audio);
+    showDetail();
+
+    // 地图上高亮对应点位
+    highlightMapSpot(id);
+}
+
+/* ---- 打开展品讲解 ---- */
+function openItem(no) {
+    const it = ITEMS.find(x => x.no === Number(no));
+    if (!it) return;
+    const z = ZONES.find(x => x.id === it.zone);
+    currentDetail = { type: 'item', data: it };
+    currentContext = `展品 ${it.no}：${it.name}` + (z ? `（${z.name}）` : '');
+    updateAiContext();
+
+    document.getElementById('detail-badge').innerText = '展品 ' + String(it.no).padStart(2, '0');
+    document.getElementById('detail-title').innerText = it.name;
+    document.getElementById('detail-desc').innerText = it.desc;
+    setDetailPhoto(it.img, it.name);
+    loadAudio(it.audio);
+    showDetail();
+}
+
+/* ---- 详情图片（有图显示，无图显示占位） ---- */
+function setDetailPhoto(src, name) {
+    const img = document.getElementById('detail-img');
+    const ph  = document.getElementById('detail-photo-ph');
+    const phT = document.getElementById('detail-photo-ph-text');
+    img.style.display = 'none';
+    ph.style.display = 'flex';
+    img.onload = () => { img.style.display = 'block'; ph.style.display = 'none'; };
+    img.onerror = () => {
+        img.style.display = 'none';
+        ph.style.display = 'flex';
+        phT.innerText = '图片占位 · ' + (src || '未配置');
+    };
+    img.src = src || '';
+    img.alt = name || '';
+    if (!src) { phT.innerText = '图片占位 · 未配置路径'; }
+}
+
+/* ---- 弹层显示 / 关闭 ---- */
+function showDetail() {
+    const m = document.getElementById('detail-modal');
+    m.classList.add('show');
+    document.querySelector('.detail-body').scrollTop = 0;
+}
+function closeDetail() {
+    document.getElementById('detail-modal').classList.remove('show');
+    const p = document.getElementById('global-player');
+    p.pause();
+    currentDetail = null;
+    currentContext = '导览首页';
+    updateAiContext();
+}
+
+/* ---- 地图点位高亮 ---- */
+function highlightMapSpot(zoneId) {
+    document.querySelectorAll('.spot-marker.zone-marker').forEach((el, i) => {
+        el.classList.toggle('active', MAP_SPOTS[i] && MAP_SPOTS[i].zone === zoneId);
+    });
+}
+
+
+/* =========================================================
+   三、音频播放
+   ========================================================= */
+const player   = document.getElementById('global-player');
+const playBtn  = document.getElementById('play-btn');
+const progress = document.getElementById('audio-progress');
+const timeText = document.getElementById('audio-time');
+
+function loadAudio(src) {
+    player.pause();
+    playBtn.innerText = '▶';
+    progress.style.width = '0%';
+    timeText.innerText = '00:00 / 00:00';
+    player.src = src || '';
+    if (!src) { playBtn.disabled = true; return; }
+    playBtn.disabled = false;
+}
+
+function toggleAudio() {
+    if (!player.src) return;
+    if (player.paused) {
+        player.play().then(() => { playBtn.innerText = '⏸'; })
+                      .catch(() => { playBtn.innerText = '▶'; });
+    } else {
+        player.pause();
+        playBtn.innerText = '▶';
+    }
+}
+
+player.addEventListener('play',  () => playBtn.innerText = '⏸');
+player.addEventListener('pause', () => playBtn.innerText = '▶');
+player.addEventListener('ended', () => { playBtn.innerText = '▶'; progress.style.width = '0%'; });
+
+player.addEventListener('timeupdate', () => {
+    if (!player.duration) return;
+    progress.style.width = (player.currentTime / player.duration * 100) + '%';
+    timeText.innerText = fmt(player.currentTime) + ' / ' + fmt(player.duration);
+});
+player.addEventListener('loadedmetadata', () => {
+    timeText.innerText = '00:00 / ' + fmt(player.duration);
+});
+player.addEventListener('error', () => {
+    playBtn.disabled = true;
+    timeText.innerText = '音频未找到';
+});
+
+function fmt(s) {
+    if (!isFinite(s)) return '00:00';
+    const m = Math.floor(s / 60);
+    const ss = Math.floor(s % 60);
+    return String(m).padStart(2, '0') + ':' + String(ss).padStart(2, '0');
+}
+
+function seekAudio(e) {
+    if (!player.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+    player.currentTime = ratio * player.duration;
+}
+
+
+/* =========================================================
+   四、AI 悬浮面板
+   ========================================================= */
+let eventSource = null;
+let aiBusy = false;
+
+function toggleAiPanel(force) {
+    const panel = document.getElementById('ai-panel');
+    const show = typeof force === 'boolean' ? force : !panel.classList.contains('show');
+    panel.classList.toggle('show', show);
+    if (show) setTimeout(() => document.getElementById('user-question').focus(), 260);
+}
+
+function updateAiContext() {
+    document.getElementById('ai-context').innerText = '当前浏览：' + currentContext;
+}
+
+function handleKeyPress(e) {
+    if (e.key === 'Enter') askPharaoh();
+}
+
+function appendMsg(role, text) {
+    const body = document.getElementById('ai-body');
+    const div = document.createElement('div');
+    div.className = 'msg ' + role;
+    div.innerHTML = '<span>' + text + '</span>';
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+    return div.querySelector('span');
+}
+
+function askPharaoh() {
+    if (aiBusy) return;
+    const input = document.getElementById('user-question');
+    const btn   = document.getElementById('ask-btn');
+    const question = input.value.trim();
+    if (!question) return;
+
+    // 关闭上一次 SSE 连接
+    if (eventSource) { eventSource.close(); eventSource = null; }
+
+    input.value = '';
+    input.disabled = true;
+    btn.disabled = true;
+    aiBusy = true;
+
+    appendMsg('user', question);
+    const aiSpan = appendMsg('ai', '⏳ 法老正拨开三千年的风沙，在泥板上翻阅史料...');
+
+    let fullAnswer = '';
+    const ctx = currentContext !== '导览首页' ? `当前游客在：${currentContext}。问题是：` : '';
+    const url = `/api/chat?question=${encodeURIComponent(ctx + question)}`;
+    eventSource = new EventSource(url);
+
+    eventSource.addEventListener('conversation.message.delta', function (e) {
+        try {
+            const obj = JSON.parse(e.data);
+            if (obj.type === 'answer') {
+                const chunk = obj.content || obj.reasoning_content || '';
+                if (chunk) {
+                    fullAnswer += chunk;
+                    aiSpan.innerHTML = fullAnswer;
+                    const body = document.getElementById('ai-body');
+                    body.scrollTop = body.scrollHeight;
                 }
-            });
-
-            // 对话正常结束
-            eventSource.addEventListener("conversation.chat.completed", function () {
-                safeClose();
-            });
-
-            // AI调用失败
-            eventSource.addEventListener('conversation.chat.failed', function () {
-                bubble.innerHTML = `🔮 <b>法老密示：</b><br>神殿算力已耗尽，请稍后再向我发问。`;
-                safeClose();
-            });
-
-            // SSE网络出错
-            eventSource.onerror = function () {
-                bubble.innerHTML = `🔮 <b>法老密示：</b><br>法老正在神殿沉睡，恢复网络后再来打扰吧。`;
-                safeClose();
-            };
-
-            function safeClose() {
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
-                input.disabled = false;
-                btn.disabled = false;
             }
+        } catch (err) { /* 忽略解析失败的分片 */ }
+    });
+
+    eventSource.addEventListener('conversation.chat.completed', safeClose);
+    eventSource.addEventListener('conversation.chat.failed', function () {
+        aiSpan.innerHTML = '神殿算力已耗尽，请稍后再向我发问。';
+        safeClose();
+    });
+    eventSource.onerror = function () {
+        aiSpan.innerHTML = '法老正在神殿沉睡，恢复网络后再来打扰吧。';
+        safeClose();
+    };
+
+    function safeClose() {
+        if (eventSource) { eventSource.close(); eventSource = null; }
+        input.disabled = false;
+        btn.disabled = false;
+        aiBusy = false;
+    }
+}
+
+
+/* =========================================================
+   五、初始化
+   ========================================================= */
+document.addEventListener('DOMContentLoaded', () => {
+    renderList();
+    renderMap();
+    updateAiContext();
+
+    // Esc 关闭弹层
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            if (document.getElementById('detail-modal').classList.contains('show')) closeDetail();
+            else toggleAiPanel(false);
         }
+    });
 
-        // 注册 PWA 离线服务
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('离线导览系统准备就绪！'))
-                    .catch(err => console.log('离线注册失败:', err));
-            });
-        }
-    </script>
+    // 注册 PWA 离线服务
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('离线导览系统准备就绪！'))
+                .catch(err => console.log('离线注册失败:', err));
+        });
+    }
+});
+</script>
 
-    <!-- 在 </body> 前引入新文件 -->
-    <script src="invite-auth.js"></script>
-
-    <script>
-        // 你原本按钮点击发送消息的地方，改成这样调用：
-        async function handleSend() {
-            const inputMessage = "介绍一下黄道十二宫"; // 用户的提问文本
-
-            // 一行代码调用我们刚刚新建的文件函数
-            const data = await sendAuthChat(inputMessage);
-
-            if (data) {
-                console.log("AI 回答内容：", data);
-                // 接下来正常展示你的 Coze AI 回答即可
-            }
-        }
-    </script>
 </body>
 </html>
