@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>大埃及博物馆·智能语音导览</title>
+    <title>阿布辛贝神庙·智能语音导览</title>
     <style>
         :root {
             --gold: #d4af37;
@@ -41,11 +41,11 @@
             align-items: center;
         }
         /* 🎯 地图图片元素 */
-#hand-drawn-map {
-    width: 100%;
-    height: auto;
-    display: block;
-}
+        #hand-drawn-map {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
         .spot-marker {
             position: absolute;
             width: 20px;
@@ -147,65 +147,113 @@
             font-weight: bold;
             cursor: pointer;
         }
-     .lightbox {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.85);
-  display: none;
-  z-index: 999;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  box-sizing: border-box;
-}
 
-
+        /* ============ 🖼️ 点位照片灯箱 ============ */
+        #photo-lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.88);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        #photo-lightbox.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .lightbox-inner {
+            position: relative;
+            max-width: 92vw;
+            max-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: scale(0.94);
+            transition: transform 0.25s ease;
+        }
+        #photo-lightbox.show .lightbox-inner {
+            transform: scale(1);
+        }
+        #lightbox-img {
+            max-width: 92vw;
+            max-height: 72vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border: 2px solid var(--gold);
+            border-radius: 10px;
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.45);
+            background: #000;
+        }
+        #lightbox-caption {
+            margin-top: 10px;
+            color: var(--gold);
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            text-align: center;
+            max-width: 92vw;
+        }
+        #lightbox-close {
+            position: absolute;
+            top: -42px;
+            right: -6px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid var(--gold);
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--gold);
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #lightbox-close:active {
+            transform: scale(0.92);
+        }
+        /* 小提示角标 */
+        .photo-hint {
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: rgba(244, 234, 225, 0.6);
+        }
     </style>
 </head>
 <body>
-    <header>🏛️ 大埃及博物馆·智能语音微导览</header>
-   <div id="map-container">
-    <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%;">
-        <!-- 图片 -->
-        <img id="hand-drawn-map" src="images/GEM.png" alt="神庙手绘地图">
-        <!-- 9个标注点 -->
-        <div class="spot-marker" style="left: 7%; top: 15%;" onclick="selectSpot(0)">0</div>
-        <div class="spot-marker" style="left: 15%; top: 43%;" onclick="selectSpot(1)">1</div>
-        <div class="spot-marker" style="left: 27%; top: 8%;" onclick="selectSpot(2)">2</div>
-        <div class="spot-marker" style="left: 16%; top: 76%;" onclick="selectSpot(3)">3</div>
-        <div class="spot-marker" style="left: 24%; top: 77%;" onclick="selectSpot(4)">4</div>
-        <div class="spot-marker" style="left: 32%; top: 77%;" onclick="selectSpot(5)">5</div>
-        <div class="spot-marker" style="left: 47%; top: 77%;" onclick="selectSpot(6)">6</div>
-        <div class="spot-marker" style="left: 66%; top: 71%;" onclick="selectSpot(7)">7</div>
-        <div class="spot-marker" style="left: 58%; top: 12%;" onclick="selectSpot(8)">8</div>
-    </div>
-     function selectSpot(id) {
-    currentSpotId = id;
-    
-    document.querySelectorAll(".spot-marker").forEach((el, index) => {
-        if (index === id) el.classList.add("active");
-        else el.classList.remove("active");
-    });
-    document.getElementById("spot-title").innerText = spotNames[id];
-    playBtn.removeAttribute("disabled");
-    playBtn.innerText = "播放";
-    player.src = `audio/${id}.mp3`;
-    player.play().then(() => {
-        playBtn.innerText = "暂停";
-    }).catch(e => console.log("用户需交互后播放"));
-    document.getElementById("ai-bubble").innerHTML = `🔮 <b>法老密示：</b><br>你已抵达【${spotNames[id]}】。听完我的低语，如果还有不解之谜，写在下方问我。`;
-    // ==========新增这一行，点击点位自动弹出图片==========
-    openLightbox(id);
-}
+    <header>🏛️ 阿布辛贝神庙·智能语音微导览</header>
 
-</div>
+    <div id="map-container">
+        <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%;">
+            <!-- 图片 -->
+            <img id="hand-drawn-map" src="images/map.jpg.jpg" alt="神庙手绘地图">
+            <!-- 9个标注点 -->
+            <div class="spot-marker" style="left: 7%; top: 15%;" onclick="selectSpot(0)">0</div>
+            <div class="spot-marker" style="left: 15%; top: 43%;" onclick="selectSpot(1)">1</div>
+            <div class="spot-marker" style="left: 27%; top: 8%;" onclick="selectSpot(2)">2</div>
+            <div class="spot-marker" style="left: 16%; top: 76%;" onclick="selectSpot(3)">3</div>
+            <div class="spot-marker" style="left: 24%; top: 77%;" onclick="selectSpot(4)">4</div>
+            <div class="spot-marker" style="left: 32%; top: 77%;" onclick="selectSpot(5)">5</div>
+            <div class="spot-marker" style="left: 47%; top: 77%;" onclick="selectSpot(6)">6</div>
+            <div class="spot-marker" style="left: 66%; top: 71%;" onclick="selectSpot(7)">7</div>
+            <div class="spot-marker" style="left: 58%; top: 12%;" onclick="selectSpot(8)">8</div>
+        </div>
+    </div>
+
     <div id="panel-control">
         <div class="audio-bar">
             <div class="audio-info">
                 <span id="spot-title">🔊 请点击地图点位开启讲解</span>
             </div>
             <button class="play-btn" id="play-trigger" onclick="toggleAudio()" disabled>播放</button>
-            <audio id="global-player" style="display: none;">
+            <audio id="global-player" style="display: none;"></audio>
         </div>
         <div class="chat-section">
             <div class="chat-box" id="ai-bubble">
@@ -217,6 +265,17 @@
             </div>
         </div>
     </div>
+
+    <!-- ============ 🖼️ 点位照片灯箱（新增） ============ -->
+    <div id="photo-lightbox" onclick="closePhoto(event)">
+        <div class="lightbox-inner">
+            <button id="lightbox-close" onclick="closePhoto(event, true)">&times;</button>
+            <img id="lightbox-img" src="" alt="点位照片">
+            <div id="lightbox-caption"></div>
+            <div class="photo-hint">点击空白处或按 Esc 关闭</div>
+        </div>
+    </div>
+
     <script>
         const spotNames = {
             0: "0号点：序曲",
@@ -229,15 +288,32 @@
             7: "7号点：日照奇迹：跨越三千年的计算",
             8: "8号点：奈菲尔塔莉小神庙：给王后的礼物"
         };
+
+        /* ===== 🖼️ 点位照片配置：把下面路径换成你自己的照片即可 ===== */
+        const spotPhotos = {
+            0: "images/spot0.jpg",
+            1: "images/spot1.jpg",
+            2: "images/spot2.jpg",
+            3: "images/spot3.jpg",
+            4: "images/spot4.jpg",
+            5: "images/spot5.jpg",
+            6: "images/spot6.jpg",
+            7: "images/spot7.jpg",
+            8: "images/spot8.jpg"
+        };
+
         let currentSpotId = null;
         let eventSource = null;
         let fullAnswer = ""; //全局保存回答文本
         const player = document.getElementById("global-player");
         const playBtn = document.getElementById("play-trigger");
+        const lightbox = document.getElementById("photo-lightbox");
+        const lightboxImg = document.getElementById("lightbox-img");
+        const lightboxCaption = document.getElementById("lightbox-caption");
 
         function selectSpot(id) {
             currentSpotId = id;
-            
+
             document.querySelectorAll(".spot-marker").forEach((el, index) => {
                 if (index === id) el.classList.add("active");
                 else el.classList.remove("active");
@@ -250,7 +326,45 @@
                 playBtn.innerText = "暂停";
             }).catch(e => console.log("用户需交互后播放"));
             document.getElementById("ai-bubble").innerHTML = `🔮 <b>法老密示：</b><br>你已抵达【${spotNames[id]}】。听完我的低语，如果还有不解之谜，写在下方问我。`;
+
+            // 👉 新增：弹出该点位照片
+            openPhoto(id);
         }
+
+        /* ===== 🖼️ 灯箱相关函数（新增） ===== */
+        function openPhoto(id) {
+            const src = spotPhotos[id];
+            if (!src) return;
+            lightboxImg.src = src;
+            lightboxImg.alt = spotNames[id] || "点位照片";
+            lightboxCaption.innerText = spotNames[id] || "";
+            lightbox.classList.add("show");
+        }
+
+        function closePhoto(event, force) {
+            // 点击内部内容不关闭；只有点遮罩或关闭按钮才关闭
+            if (!force && event && event.target !== lightbox) return;
+            lightbox.classList.remove("show");
+            // 关闭动画结束后再清空图片，避免闪烁
+            setTimeout(() => {
+                if (!lightbox.classList.contains("show")) lightboxImg.src = "";
+            }, 300);
+        }
+
+        // 按 Esc 关闭
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && lightbox.classList.contains("show")) {
+                closePhoto(null, true);
+            }
+        });
+
+        // 图片加载失败时给出提示（比如路径写错）
+        lightboxImg.addEventListener("error", function () {
+            if (this.src) {
+                lightboxCaption.innerText = "照片加载失败，请检查路径：" + spotPhotos[currentSpotId];
+            }
+        });
+
         function toggleAudio() {
             if (currentSpotId === null) return;
             if (player.paused) {
@@ -261,9 +375,11 @@
                 playBtn.innerText = "播放";
             }
         }
+
         function handleKeyPress(e) {
             if (e.key === 'Enter') askPharaoh();
         }
+
         function askPharaoh() {
             const input = document.getElementById("user-question");
             const bubble = document.getElementById("ai-bubble");
@@ -272,7 +388,7 @@
             if (!question) return;
 
             // 关闭上一次SSE连接，解决只能第一问
-            if(eventSource){
+            if (eventSource) {
                 eventSource.close();
                 eventSource = null;
             }
@@ -290,41 +406,41 @@
             const url = `/api/chat?question=${encodeURIComponent(contextQuestion)}`;
             eventSource = new EventSource(url);
 
-            eventSource.addEventListener("conversation.message.delta", function(e){
+            eventSource.addEventListener("conversation.message.delta", function (e) {
                 try {
                     const obj = JSON.parse(e.data);
-                    if(obj.type === "answer"){
+                    if (obj.type === "answer") {
                         // 当前模型bug content为空，临时读取reasoning_content输出
                         const textChunk = obj.content || obj.reasoning_content || "";
-                        if(textChunk){
+                        if (textChunk) {
                             fullAnswer += textChunk;
                             bubble.innerHTML = `🔮 <b>法老密示：</b><br>${fullAnswer}`;
                         }
                     }
-                } catch(err) {
-                    console.log("delta解析跳过",err);
+                } catch (err) {
+                    console.log("delta解析跳过", err);
                 }
             });
 
             // 对话正常结束
-            eventSource.addEventListener("conversation.chat.completed", function(){
+            eventSource.addEventListener("conversation.chat.completed", function () {
                 safeClose();
             });
 
             // AI调用失败
-            eventSource.addEventListener('conversation.chat.failed', function(){
+            eventSource.addEventListener('conversation.chat.failed', function () {
                 bubble.innerHTML = `🔮 <b>法老密示：</b><br>神殿算力已耗尽，请稍后再向我发问。`;
                 safeClose();
             });
 
             // SSE网络出错
-            eventSource.onerror = function(){
+            eventSource.onerror = function () {
                 bubble.innerHTML = `🔮 <b>法老密示：</b><br>法老正在神殿沉睡，恢复网络后再来打扰吧。`;
                 safeClose();
             };
 
-            function safeClose(){
-                if(eventSource){
+            function safeClose() {
+                if (eventSource) {
                     eventSource.close();
                     eventSource = null;
                 }
@@ -342,61 +458,23 @@
             });
         }
     </script>
+
     <!-- 在 </body> 前引入新文件 -->
-<script src="invite-auth.js"></script>
+    <script src="invite-auth.js"></script>
 
-<script>
-  // 你原本按钮点击发送消息的地方，改成这样调用：
-  async function handleSend() {
-    const inputMessage = "介绍一下黄道十二宫"; // 用户的提问文本
-    
-    // 一行代码调用我们刚刚新建的文件函数
-    const data = await sendAuthChat(inputMessage);
-    
-    if (data) {
-      console.log("AI 回答内容：", data);
-      // 接下来正常展示你的 Coze AI 回答即可
-    }
-  }
-  <!-- 实景图片弹窗 -->
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <span class="lightbox-close">&times;</span>
-  <img class="lightbox-img" id="lightbox-img" src="" alt="点位实景">
-</div>
-// ========= 页面JS（写在index.html里，不要放进sw.js）=========
-// 点位实景图片映射
-const spotImages = {
-    0: "images/spot(0).jpg",
-    1: "images/spot1.jpg",
-    2: "images/spot2.jpg",
-    3: "images/spot3.jpg",
-    4: "images/spot4.jpg",
-    5: "images/spot5.jpg",
-    6: "images/spot6.jpg",
-    7: "images/spot7.jpg",
-    8: "images/spot8.jpg"
-};
+    <script>
+        // 你原本按钮点击发送消息的地方，改成这样调用：
+        async function handleSend() {
+            const inputMessage = "介绍一下黄道十二宫"; // 用户的提问文本
 
-// 打开实景弹窗
-function openLightbox(id){
-    const lb = document.getElementById('lightbox');
-    const lbImg = document.getElementById('lightbox-img');
-    lbImg.src = spotImages[id];
-    lb.classList.add('show');
-}
+            // 一行代码调用我们刚刚新建的文件函数
+            const data = await sendAuthChat(inputMessage);
 
-// 关闭弹窗
-function closeLightbox(){
-    const lb = document.getElementById('lightbox');
-    lb.classList.remove('show');
-}
-
-// 你的原有 selectSpot 函数保持不变，内部调用 openLightbox(id)
-function selectSpot(id) {
-  // ...原有代码...
-  openLightbox(id);
-}
-
-</script>
+            if (data) {
+                console.log("AI 回答内容：", data);
+                // 接下来正常展示你的 Coze AI 回答即可
+            }
+        }
+    </script>
 </body>
 </html>
