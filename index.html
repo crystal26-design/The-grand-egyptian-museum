@@ -115,7 +115,6 @@
     }
     .zone-card.open .zone-arrow { transform: rotate(90deg); }
 
-    /* 区域头部右侧的「区域讲解」小按钮 */
     .zone-play {
         flex: 0 0 auto;
         background: transparent;
@@ -130,7 +129,6 @@
     }
     .zone-play:active { background: rgba(212,175,55,0.18); }
 
-    /* 展品列表 */
     .zone-items {
         display: none;
         border-top: 1px solid var(--line);
@@ -181,25 +179,27 @@
         font-size: 0.7rem; color: var(--gold);
     }
 
-    /* ---------- 地图视图 ---------- */
+    /* ---------- 地图视图（仅展示） ---------- */
     #map-view { text-align: center; }
     .map-tip {
         font-size: 0.75rem; color: rgba(244,234,225,0.5);
         margin: 2px 0 10px;
     }
-    #map-wrapper {
-        position: relative;
-        display: inline-block;
+    .map-frame {
         width: 100%;
         border: 1px solid var(--line);
         border-radius: 12px;
-        overflow: hidden;
         background: #2a221b;
+        overflow: hidden;
     }
-    /* 🎯 地图图片占位：换成真实地图 */
-    #hand-drawn-map {
-        width: 100%; height: auto; display: block;
+    /* 地图图片：自适应宽度，点击可放大 */
+    .map-frame img {
+        width: 100%;
+        height: auto;
+        display: block;
+        cursor: zoom-in;
     }
+    /* 无图时的占位 */
     .map-placeholder {
         width: 100%; aspect-ratio: 4 / 3;
         background:
@@ -213,31 +213,29 @@
     }
     .map-placeholder .big { font-size: 2rem; }
 
-    .spot-marker {
-        position: absolute;
-        width: 24px; height: 24px;
-        background: rgba(212,175,55,0.92);
-        border: 2px solid #fff;
-        color: var(--dark);
-        border-radius: 50%;
+    /* 地图放大查看层 */
+    #map-zoom {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.94);
+        z-index: 9700;
         display: flex; justify-content: center; align-items: center;
-        font-size: 10px; font-weight: bold;
+        opacity: 0; visibility: hidden;
+        transition: opacity 0.25s, visibility 0.25s;
+    }
+    #map-zoom.show { opacity: 1; visibility: visible; }
+    #map-zoom img {
+        max-width: 100vw;
+        max-height: 100vh;
+        object-fit: contain;
+        cursor: grab;
+    }
+    #map-zoom .zoom-close {
+        position: absolute; top: 14px; right: 14px;
+        width: 36px; height: 36px; border-radius: 50%;
+        border: 1px solid var(--gold); background: rgba(0,0,0,0.6);
+        color: var(--gold); font-size: 18px; line-height: 1;
+        display: flex; justify-content: center; align-items: center;
         cursor: pointer;
-        box-shadow: 0 0 12px var(--gold);
-        transform: translate(-50%, -50%);
-        transition: all 0.3s;
-        z-index: 10;
-    }
-    .spot-marker.zone-marker {
-        width: 30px; height: 30px;
-        background: rgba(255, 69, 0, 0.92);
-        box-shadow: 0 0 16px #ff4500;
-        font-size: 11px;
-    }
-    .spot-marker.active {
-        background: #ff4500;
-        box-shadow: 0 0 24px #ff4500;
-        transform: translate(-50%, -50%) scale(1.18);
     }
 
     /* ================= 讲解弹层（区域 / 展品共用） ================= */
@@ -304,7 +302,6 @@
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
-    /* 讲解图片占位 */
     .detail-photo {
         width: 100%;
         aspect-ratio: 4 / 3;
@@ -336,7 +333,6 @@
         border-bottom: 1px solid var(--line);
     }
 
-    /* 语音讲解条 */
     .audio-bar {
         padding: 12px 14px;
         display: flex; align-items: center; gap: 12px;
@@ -396,7 +392,6 @@
     #ai-fab .ico { font-size: 1.35rem; line-height: 1; }
     #ai-fab .txt { font-size: 0.55rem; font-weight: bold; letter-spacing: 1px; margin-top: 1px; }
 
-    /* AI 对话面板 */
     #ai-panel {
         position: fixed;
         right: 12px; bottom: 12px;
@@ -497,7 +492,6 @@
     }
     .ai-input-wrap button:disabled { background: #555; color: #888; }
 
-    /* 修改过的全局音频元素（隐藏） */
     #global-player { display: none; }
 </style>
 </head>
@@ -508,7 +502,6 @@
     <div class="sub">GRAND EGYPTIAN MUSEUM · AUDIO GUIDE</div>
 </header>
 
-<!-- ================= 双 Tab ================= -->
 <div id="tab-bar">
     <button class="tab-btn active" id="tab-list" onclick="switchTab('list')">展品检索</button>
     <button class="tab-btn" id="tab-map" onclick="switchTab('map')">展馆地图</button>
@@ -519,22 +512,29 @@
     <!-- ============ 视图一：展品检索（默认） ============ -->
     <div class="view active" id="view-list"></div>
 
-    <!-- ============ 视图二：展馆地图 ============ -->
+    <!-- ============ 视图二：展馆地图（纯展示） ============ -->
     <div class="view" id="view-map">
         <div id="map-view">
-            <div class="map-tip">点击地图上的点位，查看该区域讲解</div>
-            <div id="map-wrapper">
-                <!-- 地图占位：把下面 div 换成 <img id="hand-drawn-map" src="images/museum-map.jpg"> 即可 -->
-                <div class="map-placeholder" id="hand-drawn-map">
+            <div class="map-tip">博物馆平面图 · 点击图片可放大查看</div>
+            <div class="map-frame">
+                <!-- 有图时用 img；没有图时保留占位 -->
+                <img id="museum-map" src="images/museum-map.jpg" alt="大埃及博物馆平面图"
+                     onclick="openMapZoom(this.src)" onerror="showMapPlaceholder()">
+                <div class="map-placeholder" id="map-ph" style="display:none">
                     <div class="big">🗺️</div>
-                    <div>展馆平面图占位</div>
+                    <div>博物馆平面图占位</div>
                     <div style="font-size:0.7rem;opacity:0.7">images/museum-map.jpg</div>
                 </div>
-                <!-- 区域点位由 JS 动态生成 -->
             </div>
         </div>
     </div>
 
+</div>
+
+<!-- ================= 地图放大查看 ================= -->
+<div id="map-zoom" onclick="if(event.target===this) closeMapZoom()">
+    <button class="zoom-close" onclick="closeMapZoom()">&times;</button>
+    <img id="map-zoom-img" src="" alt="平面图放大">
 </div>
 
 <!-- ================= 讲解弹层（区域 / 展品共用） ================= -->
@@ -546,7 +546,6 @@
             <button class="detail-close" onclick="closeDetail()">&times;</button>
         </div>
         <div class="detail-body">
-            <!-- 图片占位 -->
             <div class="detail-photo">
                 <img id="detail-img" src="" alt="" style="display:none">
                 <div class="photo-placeholder" id="detail-photo-ph">
@@ -594,7 +593,6 @@
     </div>
 </div>
 
-<!-- 全局音频播放器 -->
 <audio id="global-player" preload="metadata"></audio>
 
 <script>
@@ -676,16 +674,6 @@ const ITEMS = [
     { no: 37, zone: 'z6', name: '【展品名称占位】37', sub: '年代 · 材质占位', img: 'images/item37.jpg', audio: 'audio/item37.mp3', desc: '【展品讲解文案占位】' }
 ];
 
-/* 地图点位：percent 定位，对应 6 个区域 */
-const MAP_SPOTS = [
-    { zone: 'z1', label: '入', left: '50%', top: '88%' },
-    { zone: 'z2', label: '厅', left: '50%', top: '68%' },
-    { zone: 'z3', label: '阶', left: '50%', top: '50%' },
-    { zone: 'z4', label: '图', left: '30%', top: '32%' },
-    { zone: 'z5', label: '展', left: '70%', top: '32%' },
-    { zone: 'z6', label: '船', left: '50%', top: '14%' }
-];
-
 
 /* =========================================================
    二、渲染逻辑
@@ -694,8 +682,8 @@ const MAP_SPOTS = [
 const viewList = document.getElementById('view-list');
 const viewMap  = document.getElementById('view-map');
 
-let currentContext = '导览首页';   // 供 AI 上下文使用
-let currentDetail  = null;         // { type:'zone'|'item', data }
+let currentContext = '导览首页';
+let currentDetail  = null;
 
 /* ---- 渲染区域列表 ---- */
 function renderList() {
@@ -736,22 +724,6 @@ function renderList() {
     });
 }
 
-/* ---- 渲染地图点位 ---- */
-function renderMap() {
-    const wrap = document.getElementById('map-wrapper');
-    MAP_SPOTS.forEach(s => {
-        const z = ZONES.find(x => x.id === s.zone);
-        const el = document.createElement('div');
-        el.className = 'spot-marker zone-marker';
-        el.style.left = s.left;
-        el.style.top = s.top;
-        el.innerText = s.label;
-        el.title = z ? z.name : '';
-        el.onclick = () => openZone(s.zone);
-        wrap.appendChild(el);
-    });
-}
-
 /* ---- Tab 切换 ---- */
 function switchTab(which) {
     document.getElementById('tab-list').classList.toggle('active', which === 'list');
@@ -763,12 +735,11 @@ function switchTab(which) {
     updateAiContext();
 }
 
-/* ---- 区域展开 / 收起 ---- */
+/* ---- 区域展开 / 收起（手风琴） ---- */
 function toggleZone(id) {
     const card = document.getElementById('zc-' + id);
     if (!card) return;
     const willOpen = !card.classList.contains('open');
-    // 手风琴：一次只开一个
     document.querySelectorAll('.zone-card').forEach(c => c.classList.remove('open'));
     if (willOpen) card.classList.add('open');
 }
@@ -787,9 +758,6 @@ function openZone(id) {
     setDetailPhoto(z.img, z.name);
     loadAudio(z.audio);
     showDetail();
-
-    // 地图上高亮对应点位
-    highlightMapSpot(id);
 }
 
 /* ---- 打开展品讲解 ---- */
@@ -809,7 +777,7 @@ function openItem(no) {
     showDetail();
 }
 
-/* ---- 详情图片（有图显示，无图显示占位） ---- */
+/* ---- 详情图片（有图显示，无图占位） ---- */
 function setDetailPhoto(src, name) {
     const img = document.getElementById('detail-img');
     const ph  = document.getElementById('detail-photo-ph');
@@ -827,26 +795,37 @@ function setDetailPhoto(src, name) {
     if (!src) { phT.innerText = '图片占位 · 未配置路径'; }
 }
 
-/* ---- 弹层显示 / 关闭 ---- */
 function showDetail() {
-    const m = document.getElementById('detail-modal');
-    m.classList.add('show');
+    document.getElementById('detail-modal').classList.add('show');
     document.querySelector('.detail-body').scrollTop = 0;
 }
 function closeDetail() {
     document.getElementById('detail-modal').classList.remove('show');
-    const p = document.getElementById('global-player');
-    p.pause();
+    document.getElementById('global-player').pause();
     currentDetail = null;
     currentContext = '导览首页';
     updateAiContext();
 }
 
-/* ---- 地图点位高亮 ---- */
-function highlightMapSpot(zoneId) {
-    document.querySelectorAll('.spot-marker.zone-marker').forEach((el, i) => {
-        el.classList.toggle('active', MAP_SPOTS[i] && MAP_SPOTS[i].zone === zoneId);
-    });
+/* ---- 地图：无图占位 + 放大查看 ---- */
+function showMapPlaceholder() {
+    const img = document.getElementById('museum-map');
+    if (img) img.style.display = 'none';
+    const ph = document.getElementById('map-ph');
+    if (ph) ph.style.display = 'flex';
+}
+function openMapZoom(src) {
+    if (!src) return;
+    document.getElementById('map-zoom-img').src = src;
+    document.getElementById('map-zoom').classList.add('show');
+}
+function closeMapZoom() {
+    document.getElementById('map-zoom').classList.remove('show');
+    setTimeout(() => {
+        if (!document.getElementById('map-zoom').classList.contains('show')) {
+            document.getElementById('map-zoom-img').src = '';
+        }
+    }, 300);
 }
 
 
@@ -949,7 +928,6 @@ function askPharaoh() {
     const question = input.value.trim();
     if (!question) return;
 
-    // 关闭上一次 SSE 连接
     if (eventSource) { eventSource.close(); eventSource = null; }
 
     input.value = '';
@@ -1004,18 +982,16 @@ function askPharaoh() {
    ========================================================= */
 document.addEventListener('DOMContentLoaded', () => {
     renderList();
-    renderMap();
     updateAiContext();
 
-    // Esc 关闭弹层
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
-            if (document.getElementById('detail-modal').classList.contains('show')) closeDetail();
+            if (document.getElementById('map-zoom').classList.contains('show')) closeMapZoom();
+            else if (document.getElementById('detail-modal').classList.contains('show')) closeDetail();
             else toggleAiPanel(false);
         }
     });
 
-    // 注册 PWA 离线服务
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js')
