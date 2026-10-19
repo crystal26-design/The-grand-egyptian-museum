@@ -6,7 +6,7 @@ const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/images/map.jpg',
-  '/images/spot0.jpg',
+  '/images/spot(0).jpg',
   '/images/spot1.jpg',
   '/images/spot2.jpg',
   '/images/spot3.jpg',
