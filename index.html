@@ -289,28 +289,55 @@
         border-bottom: 1px solid var(--line);
     }
 
-    /* 朗读按钮条（位于图片下方、讲解文字上方） */
-    .tts-bar {
+    /* 音频播放条（位于图片下方、讲解文字上方） */
+    .audio-bar {
         padding: 12px 15px;
-        display: flex;
+        display: flex; align-items: center; gap: 12px;
         background: rgba(212,175,55,0.06);
         border-bottom: 1px solid var(--line);
     }
-    .tts-btn {
-        flex: 1;
-        height: 42px;
-        border-radius: 21px;
+    .play-btn {
+        flex: 0 0 auto;
+        width: 44px; height: 44px;
+        border-radius: 50%;
         background: var(--gold);
         border: none;
         color: var(--dark);
-        font-size: 0.88rem;
+        font-size: 1.05rem;
         font-weight: bold;
-        letter-spacing: 1px;
         cursor: pointer;
-        display: flex; justify-content: center; align-items: center; gap: 6px;
+        display: flex; justify-content: center; align-items: center;
+    }
+    .play-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+    .audio-meta { flex: 1; min-width: 0; }
+    .audio-label {
+        font-size: 0.72rem; color: var(--gold);
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 6px;
+    }
+    .speed-btn {
+        background: transparent;
+        border: 1px solid var(--gold);
+        color: var(--gold);
+        border-radius: 10px;
+        font-size: 0.68rem;
+        padding: 1px 8px;
+        cursor: pointer;
         font-family: inherit;
     }
-    .tts-btn.tts-on { background: #8a6d1f; color: var(--sand); }
+    .audio-track {
+        height: 4px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 2px;
+        overflow: hidden;
+        cursor: pointer;
+    }
+    .audio-progress {
+        height: 100%; width: 0%;
+        background: var(--gold);
+        border-radius: 2px;
+        transition: width 0.15s linear;
+    }
 
     /* ================= AI 悬浮球 ================= */
     #ai-fab {
@@ -437,7 +464,7 @@
 <body>
 
 <header>
-    <div class="title">🏛️ 大埃及博物馆·智能语音导览</div>
+    <div class="title">🏛️ 大埃及博物馆·智能导览讲解</div>
     <div class="sub">GRAND EGYPTIAN MUSEUM · AUDIO GUIDE</div>
 </header>
 
@@ -470,8 +497,20 @@
                     <div id="detail-photo-ph-text">图片占位</div>
                 </div>
             </div>
-            <div class="tts-bar">
-                <button class="tts-btn" id="tts-btn" onclick="toggleTTS()">🔊 语音讲解</button>
+            <div class="audio-bar">
+                <button class="play-btn" id="play-btn" onclick="toggleAudio()">▶</button>
+                <div class="audio-meta">
+                    <div class="audio-label">
+                        <span>语音讲解</span>
+                        <span style="display:flex;gap:6px;align-items:center;">
+                            <button class="speed-btn" id="speed-btn" onclick="cycleSpeed(event)">1.0x</button>
+                            <span id="audio-time">00:00 / 00:00</span>
+                        </span>
+                    </div>
+                    <div class="audio-track" onclick="seekAudio(event)">
+                        <div class="audio-progress" id="audio-progress"></div>
+                    </div>
+                </div>
             </div>
             <div class="detail-desc" id="detail-desc">描述占位</div>
         </div>
@@ -500,6 +539,8 @@
         <button onclick="askPharaoh()" id="ask-btn">提问</button>
     </div>
 </div>
+
+<audio id="global-player" preload="metadata"></audio>
 
 <script>
 /* =========================================================
@@ -826,7 +867,7 @@ items: [
     name: '索贝霍特普五世坐像',
     nameEn: 'Seated Statue of Sobekhotep V',
     sub: '第13王朝 · 花岗岩 · 卡纳克 · GEM 8263 · 5号展厅',
-    img: 'images/shared/item28.png',
+    img: 'images/shared/item28.jpg',
     audio: 'audio/zh/item28.mp3',
     desc: '这尊像有个让人心里一软的地方。索贝霍特普五世穿着"塞德节"的传统服饰。塞德节是法老在位第三十年才举行的庆典，用来确认并庆祝他持续的统治——说白了，是一次"我还撑得住"的公开证明。问题是：他只统治了几年。所以这尊像，不是在纪念已经发生的事，而是在许愿。他把自己打扮成"已经统治了三十年"的样子，希望这个形象能让预言成真。三千八百年前的一位国王，对着石头许了个愿。'
   },
@@ -844,7 +885,7 @@ items: [
     name: '祭司王拉美西斯纳克特坐像',
     nameEn: 'Seated Statue of Ramessesnakht',
     sub: '第20王朝 · 花岗岩 · 卡纳克 · GEM 5999 · 7号展厅',
-    img: 'images/shared/item30.png',
+    img: 'images/shared/item30.jpg',
     audio: 'audio/zh/item30.mp3',
     desc: '这一尊，是位"有文化的人"。拉美西斯纳克特是阿蒙神的大祭司。他被刻画成正在写字的姿态，而在他身旁，坐着托特——那个狒狒形象的神，掌管智慧、书写、魔法和月亮。请注意这个组合的意味：他展示的不是权力，是知识。在古埃及，书写本身就是一种神圣行为，能写字的人，掌握着通向来世的知识。而这尊像，是他的儿子——同样当上了大祭司——供奉在卡纳克的。底比斯的阿蒙大祭司，影响力大得惊人。他们最终控制了上埃及，甚至一度自称为王。神权与王权的界线，在这里被磨得很薄。'
   },
@@ -862,7 +903,7 @@ items: [
     name: '巨大的阿蒙与穆特雕像',
     nameEn: 'Colossal Statues of Amun and Mut',
     sub: '第18王朝 · 石灰岩 · 卡纳克 · GEM 6729 · 9号展厅',
-    img: 'images/shared/item32.png',
+    img: 'images/shared/item32.jpg',
     audio: 'audio/zh/item32.mp3',
     desc: '这尊巨大的阿蒙神像，是"灾后重建"的产物。阿肯那顿的宗教革命期间，大量旧神的雕像被砸毁。他死后，埃及要做的第一件事，就是把被砸的神重新立起来——这座阿蒙像，就是当年被委托制作的数百尊之一。雕像上刻着霍朗赫布王的铭文，还有两位神的名字：阿蒙-雷，被称为"两地王座的主宰"；穆特，被称为"圣湖的女士"。一尊雕像，就能读出一段政治修复史：神被砸掉之后，需要有人用石头把他们请回来。'
   },
@@ -1026,12 +1067,12 @@ function openZone(id) {
     currentDetail = { type: 'zone', data: z };
     currentContext = `区域：${z.name}`;
     updateAiContext();
-    stopSpeech();
 
     document.getElementById('detail-badge').innerText = '区域讲解';
     document.getElementById('detail-title').innerText = z.name;
     document.getElementById('detail-desc').innerText = z.desc;
     setDetailPhoto(z.zoneImg, z.name);
+    loadAudio(z.audio);
     showDetail();
 }
 
@@ -1043,12 +1084,12 @@ function openItem(no) {
     currentDetail = { type: 'item', data: it };
     currentContext = `展品 ${it.no}：${it.name}` + (z ? `（${z.name}）` : '');
     updateAiContext();
-    stopSpeech();
 
     document.getElementById('detail-badge').innerText = '展品 ' + String(it.no).padStart(2, '0');
     document.getElementById('detail-title').innerText = it.name;
     document.getElementById('detail-desc').innerText = it.desc;
     setDetailPhoto(it.img, it.name);
+    loadAudio(it.audio);
     showDetail();
 }
 
@@ -1076,7 +1117,7 @@ function showDetail() {
 }
 function closeDetail() {
     document.getElementById('detail-modal').classList.remove('show');
-    stopSpeech();
+    player.pause();
     currentDetail = null;
     currentContext = '导览首页';
     updateAiContext();
@@ -1099,62 +1140,76 @@ function closeMapZoom() {
 
 
 /* =========================================================
-   三·五、系统语音朗读（Web Speech API，离线可用）
+   三、语音讲解播放（预生成 mp3，支持倍速，离线可听）
    ========================================================= */
-let ttsBtnRef = null;
+const SPEEDS = [1.0, 1.25, 1.5, 0.8];
+let speedIdx = 0;
 
-/* 预热：尽早取一次音色列表；iOS 需要首次交互后才可用 */
-if ('speechSynthesis' in window) {
-    speechSynthesis.getVoices();
-    speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+const player   = document.getElementById('global-player');
+const playBtn  = document.getElementById('play-btn');
+const progress = document.getElementById('audio-progress');
+const timeText = document.getElementById('audio-time');
+const speedBtn = document.getElementById('speed-btn');
+
+function loadAudio(src) {
+    player.pause();
+    playBtn.innerText = '▶';
+    progress.style.width = '0%';
+    timeText.innerText = '00:00 / 00:00';
+    player.src = src || '';
+    player.playbackRate = SPEEDS[speedIdx];
+    if (!src) { playBtn.disabled = true; return; }
+    playBtn.disabled = false;
 }
 
-function getZhVoice() {
-    const vs = speechSynthesis.getVoices();
-    return vs.find(v => v.lang.replace('_', '-').startsWith('zh') && v.localService)
-        || vs.find(v => v.lang.replace('_', '-').startsWith('zh'));
-}
-
-function setTtsBtn(btn, on) {
-    if (!btn) return;
-    btn.innerText = on ? '⏹ 停止语音' : '🔊 语音讲解';
-    btn.classList.toggle('tts-on', on);
-}
-
-function stopSpeech() {
-    if ('speechSynthesis' in window) speechSynthesis.cancel();
-    if (ttsBtnRef) { setTtsBtn(ttsBtnRef, false); ttsBtnRef = null; }
-}
-
-function speakText(text, btn) {
-    if (!('speechSynthesis' in window)) {
-        alert('当前浏览器不支持语音合成，请使用较新版本的浏览器。');
-        return;
+function toggleAudio() {
+    if (!player.src) return;
+    if (player.paused) {
+        player.play().then(() => { playBtn.innerText = '⏸'; })
+                      .catch(() => { playBtn.innerText = '▶'; });
+    } else {
+        player.pause();
+        playBtn.innerText = '▶';
     }
-    /* 再次点击同一按钮 = 停止 */
-    if (speechSynthesis.speaking && !speechSynthesis.paused && btn === ttsBtnRef) {
-        stopSpeech();
-        return;
-    }
-    stopSpeech();
-
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-CN';
-    u.rate = 0.95;
-    const v = getZhVoice();
-    if (v) u.voice = v;
-    u.onend   = () => { setTtsBtn(btn, false); if (ttsBtnRef === btn) ttsBtnRef = null; };
-    u.onerror = () => { setTtsBtn(btn, false); if (ttsBtnRef === btn) ttsBtnRef = null; };
-
-    setTtsBtn(btn, true);
-    ttsBtnRef = btn;
-    speechSynthesis.speak(u);
 }
 
-/* 弹层里的朗读按钮：读当前区域/展品的 desc */
-function toggleTTS() {
-    if (!currentDetail) return;
-    speakText(currentDetail.data.desc, document.getElementById('tts-btn'));
+/* 倍速切换：1.0x → 1.25x → 1.5x → 0.8x → 1.0x */
+function cycleSpeed(e) {
+    e.stopPropagation();
+    speedIdx = (speedIdx + 1) % SPEEDS.length;
+    player.playbackRate = SPEEDS[speedIdx];
+    speedBtn.innerText = ['1.0x','1.25x','1.5x','0.8x'][speedIdx];
+}
+
+player.addEventListener('play',  () => playBtn.innerText = '⏸');
+player.addEventListener('pause', () => playBtn.innerText = '▶');
+player.addEventListener('ended', () => { playBtn.innerText = '▶'; progress.style.width = '0%'; });
+
+player.addEventListener('timeupdate', () => {
+    if (!player.duration) return;
+    progress.style.width = (player.currentTime / player.duration * 100) + '%';
+    timeText.innerText = fmt(player.currentTime) + ' / ' + fmt(player.duration);
+});
+player.addEventListener('loadedmetadata', () => {
+    timeText.innerText = '00:00 / ' + fmt(player.duration);
+});
+player.addEventListener('error', () => {
+    playBtn.disabled = true;
+    timeText.innerText = '音频未找到';
+});
+
+function fmt(s) {
+    if (!isFinite(s)) return '00:00';
+    const m = Math.floor(s / 60);
+    const ss = Math.floor(s % 60);
+    return String(m).padStart(2, '0') + ':' + String(ss).padStart(2, '0');
+}
+
+function seekAudio(e) {
+    if (!player.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+    player.currentTime = ratio * player.duration;
 }
 
 
